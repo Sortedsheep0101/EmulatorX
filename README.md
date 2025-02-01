@@ -1,16 +1,33 @@
-# Tauri + Vue + TypeScript
+# EmulatorX
+All-In-One Emulator Manager
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+## Overview
+EmulatorX is a powerful and user-friendly application that helps you manage multiple emulators and ROMs in one centralized location. It simplifies the process of organizing, launching, and maintaining your retro gaming collection.
 
-## Recommended IDE Setup
+## Features
+- 🎮 Unified interface for multiple emulator platforms
+- 🔍 Advanced search and filtering capabilities
+- ⚙️ Easy emulator configuration management
 
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Getting Started
 
-## Type Support For `.vue` Imports in TS
+### Prerequisites
+- Windows 10/11 (64-bit)
+- .NET 6.0 or higher
+- At least 2GB of free disk space
 
-Since TypeScript cannot handle type information for `.vue` imports, they are shimmed to be a generic Vue component type by default. In most cases this is fine if you don't really care about component prop types outside of templates. However, if you wish to get actual prop types in `.vue` imports (for example to get props validation when using manual `h(...)` calls), you can enable Volar's Take Over mode by following these steps:
+### Installation
+1. Download the latest release from the [releases page](https://github.com/yourusername/EmulatorX/releases)
+2. Run the installer and follow the on-screen instructions
+3. Launch EmulatorX and start configuring your emulators
 
-1. Run `Extensions: Show Built-in Extensions` from VS Code's command palette, look for `TypeScript and JavaScript Language Features`, then right click and select `Disable (Workspace)`. By default, Take Over mode will enable itself if the default TypeScript extension is disabled.
-2. Reload the VS Code window by running `Developer: Reload Window` from the command palette.
+## Supported Emulators
+- RetroArch
+- PCSX2
+- Dolphin
+- RPCS3
+- Yuzu
+- (And many more...)
 
-You can learn more about Take Over mode [here](https://github.com/johnsoncodehk/volar/discussions/471).
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

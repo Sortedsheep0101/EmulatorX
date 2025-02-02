@@ -1,3 +1,31 @@
+# IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Build output
+dist/
+dist-ssr/
+
+# Rust/Tauri build files
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# Nuxt
+.nuxt/
+.output/
+.nitro/
+.cache/
+
+# Dependencies
+node_modules/
+.yarn/
+.pnp.*
+
 # Logs
 logs
 *.log
@@ -7,18 +35,11 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Environment variables
+.env
+.env.*
+!.env.example
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# System Files
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db

@@ -1,7 +1,113 @@
+<template>
+  <div class="app-container">
+    <header>
+      <h1>EmulatorX</h1>
+    </header>
+
+    <nav>
+      <div 
+        class="nav-background" 
+        :style="{ 
+          transform: `translateX(${currentTab === 'installed' ? '0' : currentTab === 'available' ? '100' : '200'}%)`
+        }"
+      ></div>
+      <button 
+        v-for="tab in tabs" 
+        :key="tab.id"
+        :class="[
+          'transition-all duration-200 hover:scale-110 active:scale-95',
+          { active: currentTab === tab.id }
+        ]"
+        @click="currentTab = tab.id"
+      >
+        {{ tab.label }}
+      </button>
+    </nav>
+
+    <!-- Add after the nav section -->
+    <div class="filters">
+      <div class="search-box">
+        <input 
+          type="text" 
+          v-model="searchQuery"
+          placeholder="Search emulators..."
+        >
+      </div>
+      <div class="platform-filter">
+        <select v-model="platformFilter">
+          <option v-for="platform in platforms" 
+                  :key="platform.value" 
+                  :value="platform.value">
+            {{ platform.label }}
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <component 
+      :is="currentTab === 'settings' ? Settings : 'div'" 
+      v-if="currentTab === 'settings' || currentTab === 'installed' || currentTab === 'available'"
+      class="emulators-section"
+    >
+      <template v-if="currentTab !== 'settings'">
+        <h2>{{ currentTab === 'installed' ? 'Installed' : 'Available' }} Emulators</h2>
+        
+        <div 
+          v-if="(currentTab === 'installed' ? filteredInstalledEmulators : filteredAvailableEmulators).length === 0" 
+          class="empty-state"
+        >
+          <p>{{ currentTab === 'installed' ? 'No emulators installed yet.' : 'No emulators match your current filters.' }}</p>
+        </div>
+        
+        <div v-else class="emulators-grid">
+          <EmulatorCard
+            v-for="emulator in (currentTab === 'installed' ? filteredInstalledEmulators : filteredAvailableEmulators)"
+            :key="emulator.name"
+            :emulator="emulator"
+            :errors="errors"
+          >
+            <template #actions>
+              <template v-if="currentTab === 'installed'">
+                <button 
+                  @click="runEmulator(emulator)" 
+                  class="primary mr-2"
+                  :disabled="isLoading[emulator.name]"
+                >
+                  <span v-if="isLoading[emulator.name]" class="loader"></span>
+                  <span v-else>Launch</span>
+                </button>
+                <button 
+                  @click="uninstallEmulator(emulator)" 
+                  class="danger"
+                  :disabled="isLoading[emulator.name]"
+                >
+                  <span v-if="isLoading[emulator.name]" class="loader"></span>
+                  <span v-else>Uninstall</span>
+                </button>
+              </template>
+              <template v-else>
+                <button 
+                  @click="installEmulator(emulator)" 
+                  class="primary"
+                  :disabled="isLoading[emulator.name]"
+                >
+                  <span v-if="isLoading[emulator.name]" class="loader"></span>
+                  <span v-else>Install</span>
+                </button>
+              </template>
+            </template>
+          </EmulatorCard>
+        </div>
+      </template>
+    </component>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import Settings from "./components/Settings.vue";
+import EmulatorCard from './components/EmulatorCard.vue';
 
 interface Emulator {
   name: string;
@@ -130,6 +236,13 @@ const platforms = [
   { value: 'sega', label: 'Sega' },
 ];
 
+// Add this to your script setup section, near the top with other refs
+const tabs = [
+  { id: 'installed', label: 'Installed' },
+  { id: 'available', label: 'Available' },
+  { id: 'settings', label: 'Settings' }
+];
+
 // Add after the platforms array
 const filteredInstalledEmulators = computed(() => {
   return installedEmulators.value.filter(emulator => {
@@ -233,130 +346,6 @@ function formatDate(date: string | undefined): string {
 }
 </script>
 
-<template>
-  <div class="app-container">
-    <header>
-      <h1>EmulatorX</h1>
-    </header>
-
-    <nav>
-      <button 
-        :class="{ active: currentTab === 'installed' }"
-        @click="currentTab = 'installed'"
-      >
-        Installed
-      </button>
-      <button 
-        :class="{ active: currentTab === 'available' }"
-        @click="currentTab = 'available'"
-      >
-        Available
-      </button>
-      <button 
-        :class="{ active: currentTab === 'settings' }"
-        @click="currentTab = 'settings'"
-      >
-        Settings
-      </button>
-    </nav>
-
-    <!-- Add after the nav section -->
-    <div class="filters">
-      <div class="search-box">
-        <input 
-          type="text" 
-          v-model="searchQuery"
-          placeholder="Search emulators..."
-        >
-      </div>
-      <div class="platform-filter">
-        <select v-model="platformFilter">
-          <option v-for="platform in platforms" 
-                  :key="platform.value" 
-                  :value="platform.value">
-            {{ platform.label }}
-          </option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Show/hide content based on currentTab -->
-    <div v-if="currentTab === 'installed'" class="emulators-section">
-      <h2>Installed Emulators</h2>
-      <div v-if="filteredInstalledEmulators.length === 0" class="empty-state">
-        <p>No emulators installed yet.</p>
-      </div>
-      <div v-else class="emulators-grid">
-        <div v-for="emulator in filteredInstalledEmulators" :key="emulator.name" class="emulator-card">
-          <div class="emulator-header">
-            <h3>{{ emulator.name }}</h3>
-          </div>
-          <div class="emulator-info">
-            <p>Last used: {{ formatDate(emulator.lastUsed) }}</p>
-            <p>Size: {{ emulator.size }}</p>
-          </div>
-          <div class="button-group">
-            <button 
-              @click="runEmulator(emulator)" 
-              class="primary"
-              :disabled="isLoading[emulator.name]"
-            >
-              <span v-if="isLoading[emulator.name]" class="loader"></span>
-              <span v-else>Launch</span>
-            </button>
-            <button 
-              @click="uninstallEmulator(emulator)" 
-              class="danger"
-              :disabled="isLoading[emulator.name]"
-            >
-              <span v-if="isLoading[emulator.name]" class="loader"></span>
-              <span v-else>Uninstall</span>
-            </button>
-          </div>
-          <div v-if="errors[emulator.name]" class="error-message">
-            {{ errors[emulator.name] }}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="currentTab === 'available'" class="emulators-section">
-      <h2>Available Emulators</h2>
-      <div v-if="filteredAvailableEmulators.length === 0" class="empty-state">
-        <p>No emulators match your current filters.</p>
-      </div>
-      <div v-else class="emulators-grid">
-        <div v-for="emulator in filteredAvailableEmulators" :key="emulator.name" class="emulator-card">
-          <div class="emulator-header">
-            <h3>{{ emulator.name }}</h3>
-            <div class="header-info">
-              <span class="version">v{{ emulator.version }}</span>
-            </div>
-          </div>
-          <div class="emulator-info">
-            <p>{{ emulator.description }}</p>
-            <p>Size: {{ emulator.size }}</p>
-          </div>
-          <div class="button-group">
-            <button 
-              @click="installEmulator(emulator)" 
-              class="primary"
-              :disabled="isLoading[emulator.name]"
-            >
-              <span v-if="isLoading[emulator.name]" class="loader"></span>
-              <span v-else>Install</span>
-            </button>
-          </div>
-          <div v-if="errors[emulator.name]" class="error-message">
-            {{ errors[emulator.name] }}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <Settings v-if="currentTab === 'settings'" />
-  </div>
-</template>
 
 <style scoped>
 .app-container {
@@ -517,9 +506,23 @@ nav {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   max-width: fit-content;
   border: 1px solid rgba(52, 152, 219, 0.1);
+  position: relative;
+}
+
+.nav-background {
+  position: absolute;
+  left: 0.75rem; /* Match nav padding */
+  top: 0.75rem; /* Match nav padding */
+  width: calc(33.333% - 0.667rem); /* Account for gaps */
+  height: calc(100% - 1.5rem); /* Account for nav padding */
+  background: linear-gradient(45deg, #3498db, #2563eb);
+  border-radius: 8px;
+  transition: transform 0.3s ease;
+  z-index: 0;
 }
 
 nav button {
+  position: relative;
   padding: 0.75rem 2rem;
   border: none;
   border-radius: 8px;
@@ -530,16 +533,25 @@ nav button {
   font-weight: 500;
   min-width: 120px;
   font-size: 0.95rem;
+  z-index: 1;
+  transform-origin: center;
+  transition-property: all;
+  transition-duration: 200ms;
+}
+
+nav button:hover {
+  transform: scale(1.1);
+}
+
+nav button:active {
+  transform: scale(0.95);
 }
 
 nav button.active {
-  background: linear-gradient(45deg, #3498db, #2563eb);
   color: white;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
 }
 
 nav button:hover:not(.active) {
-  background: #f1f5f9;
   color: #334155;
 }
 

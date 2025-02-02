@@ -17,7 +17,7 @@ EmulatorX is a powerful and user-friendly application that helps you manage mult
 - At least 2GB of free disk space
 
 ### Installation
-1. Download the latest release from the [releases page](https://github.com/yourusername/EmulatorX/releases)
+1. Download the latest release from the [releases page](https://github.com/X-Emulation/EmulatorX/releases)
 2. Run the installer and follow the on-screen instructions
 3. Launch EmulatorX and start configuring your emulators
 

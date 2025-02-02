@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  background: #f8fafc;  /* This is a light gray color that matches the design */
+}
+
 @layer components {
   .btn {
     @apply px-3 py-2 rounded-lg font-medium transition-all duration-200 cursor-pointer;

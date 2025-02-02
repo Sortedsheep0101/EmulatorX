@@ -60,43 +60,49 @@
         </div>
         
         <div v-else class="emulators-grid">
-          <EmulatorCard
-            v-for="emulator in (currentTab === 'installed' ? filteredInstalledEmulators : filteredAvailableEmulators)"
-            :key="emulator.name"
-            :emulator="emulator"
-            :errors="errors"
+          <TransitionGroup
+            name="emulator-list"
+            tag="div"
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            <template #actions>
-              <template v-if="currentTab === 'installed'">
-                <button 
-                  @click="runEmulator(emulator)" 
-                  class="primary mr-2"
-                  :disabled="isLoading[emulator.name]"
-                >
-                  <span v-if="isLoading[emulator.name]" class="loader"></span>
-                  <span v-else>Launch</span>
-                </button>
-                <button 
-                  @click="uninstallEmulator(emulator)" 
-                  class="danger"
-                  :disabled="isLoading[emulator.name]"
-                >
-                  <span v-if="isLoading[emulator.name]" class="loader"></span>
-                  <span v-else>Uninstall</span>
-                </button>
+            <EmulatorCard
+              v-for="emulator in (currentTab === 'installed' ? filteredInstalledEmulators : filteredAvailableEmulators)"
+              :key="emulator.name"
+              :emulator="emulator"
+              :errors="errors"
+            >
+              <template #actions>
+                <template v-if="currentTab === 'installed'">
+                  <button 
+                    @click="runEmulator(emulator)" 
+                    class="primary mr-2"
+                    :disabled="isLoading[emulator.name]"
+                  >
+                    <span v-if="isLoading[emulator.name]" class="loader"></span>
+                    <span v-else>Launch</span>
+                  </button>
+                  <button 
+                    @click="uninstallEmulator(emulator)" 
+                    class="danger"
+                    :disabled="isLoading[emulator.name]"
+                  >
+                    <span v-if="isLoading[emulator.name]" class="loader"></span>
+                    <span v-else>Uninstall</span>
+                  </button>
+                </template>
+                <template v-else>
+                  <button 
+                    @click="installEmulator(emulator)" 
+                    class="primary"
+                    :disabled="isLoading[emulator.name]"
+                  >
+                    <span v-if="isLoading[emulator.name]" class="loader"></span>
+                    <span v-else>Install</span>
+                  </button>
+                </template>
               </template>
-              <template v-else>
-                <button 
-                  @click="installEmulator(emulator)" 
-                  class="primary"
-                  :disabled="isLoading[emulator.name]"
-                >
-                  <span v-if="isLoading[emulator.name]" class="loader"></span>
-                  <span v-else>Install</span>
-                </button>
-              </template>
-            </template>
-          </EmulatorCard>
+            </EmulatorCard>
+          </TransitionGroup>
         </div>
       </template>
     </component>
@@ -104,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, TransitionGroup } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import Settings from "./components/Settings.vue";
 import EmulatorCard from './components/EmulatorCard.vue';
@@ -353,7 +359,6 @@ function formatDate(date: string | undefined): string {
   margin: 0 auto;
   padding: 2rem;
   font-family: system-ui, -apple-system, sans-serif;
-  background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
   min-height: 100vh;
 }
 
@@ -384,9 +389,8 @@ h2 {
 }
 
 .emulators-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
+  position: relative;
+  min-height: 200px; /* Ensure container doesn't collapse during animations */
 }
 
 .emulator-card {
@@ -662,5 +666,28 @@ nav button[data-tab="settings"]::before {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+/* Add these new animation styles */
+.emulator-list-move, /* apply transition to moving elements */
+.emulator-list-enter-active,
+.emulator-list-leave-active {
+  transition: all 0.5s ease;
+}
+
+.emulator-list-enter-from {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.emulator-list-leave-to {
+  opacity: 0;
+  transform: translateY(-30px);
+}
+
+/* ensure leaving items are taken out of layout flow so that moving
+   animations can be calculated correctly */
+.emulator-list-leave-active {
+  position: absolute;
 }
 </style>

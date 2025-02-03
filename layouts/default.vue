@@ -11,7 +11,8 @@
           transform: `translateX(${
             currentRoute === '/' ? '0' : 
             currentRoute === '/available' ? '100' : 
-            currentRoute === '/settings' ? '200' : '0'}%)`
+            currentRoute === '/roms' ? '200' :
+            currentRoute === '/settings' ? '300' : '0'}%)`
         }"
       ></div>
       <NuxtLink
@@ -39,6 +40,7 @@ import { useRoute } from 'nuxt/app';
 const tabs = [
   { id: 'installed', label: 'Installed', path: '/' },
   { id: 'available', label: 'Available', path: '/available' },
+  { id: 'roms', label: 'ROMs', path: '/roms' },
   { id: 'settings', label: 'Settings', path: '/settings' }
 ];
 
@@ -71,26 +73,25 @@ h1 {
 }
 
 nav {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  background: white;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  background: #dce2e7;
   padding: 0.75rem;
   border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  max-width: fit-content;
-  border: 1px solid rgba(52, 152, 219, 0.1);
-  position: relative;
-  margin: 0 auto 2rem;
+  margin: 1rem 0 2rem;
 }
 
 .nav-background {
   position: absolute;
   left: 0.75rem;
   top: 0.75rem;
-  width: calc(33.333% - 0.667rem);
+  width: calc(25% - 0.75rem);
   height: calc(100% - 1.5rem);
-  background: linear-gradient(45deg, #3498db, #2563eb);
+  background: linear-gradient(90deg, #3498db, #2563eb, #3498db);
+  background-size: 200% 100%;
+  animation: moveGradient 2s linear infinite;
   border-radius: 8px;
   transition: transform 0.3s ease;
   z-index: 0;
@@ -102,7 +103,7 @@ nav a {
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: #64748b;
+  color: #94a3b8;
   cursor: pointer;
   transition: all 0.2s ease;
   font-weight: 500;
@@ -127,6 +128,15 @@ nav a.active {
 }
 
 nav a:hover:not(.active) {
-  color: #334155;
+  color: #e2e8f0;
+}
+
+@keyframes moveGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
 }
 </style> 

@@ -16,7 +16,7 @@ const allEmulators: Emulator[] = [
   { 
     name: "Dolphin",
     installed: false,
-    version: "5.0.2",
+    version: "2412",
     lastUsed: "2024-03-15",
     size: "45MB",
     description: "GameCube/Wii Emulator",
@@ -25,7 +25,7 @@ const allEmulators: Emulator[] = [
   { 
     name: "RPCS3",
     installed: false,
-    version: "0.0.30",
+    version: "0.0.32",
     lastUsed: "2024-03-10",
     size: "120MB",
     description: "PlayStation 3 Emulator",
@@ -34,7 +34,7 @@ const allEmulators: Emulator[] = [
   { 
     name: "Xenia",
     installed: false,
-    version: "1.0.5",
+    version: "1.0.2817",
     description: "Xbox 360 Emulator",
     size: "80MB",
     platforms: ["xbox"]
@@ -42,7 +42,7 @@ const allEmulators: Emulator[] = [
   { 
     name: "PCSX2",
     installed: false,
-    version: "1.7.0",
+    version: "2.2.0",
     description: "PlayStation 2 Emulator",
     size: "65MB",
     platforms: ["playstation"]
@@ -66,7 +66,7 @@ const allEmulators: Emulator[] = [
   {
     name: "Xemu",
     installed: false,
-    version: "latest",
+    version: "0.8.15",
     description: "Original Xbox Emulator",
     size: "40MB",
     platforms: ["xbox"]

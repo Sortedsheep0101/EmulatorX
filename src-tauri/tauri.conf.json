@@ -6,8 +6,7 @@
   "build": {
     "beforeDevCommand": "set CI=true && yarn dev --port 1420",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "set CI=true && yarn build",
-    "frontendDist": "../dist"
+    "beforeBuildCommand": "set CI=true && yarn build"
   },
   "app": {
     "windows": [
@@ -20,7 +19,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; connect-src 'self' http://*:1248"
     }
   },
   "bundle": {

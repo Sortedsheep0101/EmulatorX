@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "identifier": "com.emulatorx.app",
   "build": {
-    "beforeDevCommand": "set CI=true && yarn dev",
+    "beforeDevCommand": "set CI=true && yarn dev --port 1420",
+    "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "set CI=true && yarn build"
   },
   "app": {

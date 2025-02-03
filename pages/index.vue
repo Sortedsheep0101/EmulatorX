@@ -29,7 +29,7 @@
       <TransitionGroup
         name="emulator-list"
         tag="div"
-        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        class="grid-container"
       >
         <EmulatorCard
           v-for="emulator in filteredInstalledEmulators"
@@ -39,15 +39,15 @@
         >
           <template #actions>
             <button 
-              @click="runEmulator(emulator)" 
-              class="primary mr-2"
+              @click="runEmulator(emulator)"
+              class="primary"
               :disabled="isLoading[emulator.name]"
             >
               <span v-if="isLoading[emulator.name]" class="loader"></span>
               <span v-else>Run</span>
             </button>
             <button 
-              @click="uninstallEmulator(emulator)" 
+              @click="uninstallEmulator(emulator)"
               class="danger"
               :disabled="isLoading[emulator.name]"
             >
@@ -140,7 +140,7 @@ const {
 }
 
 button.primary {
-  background: linear-gradient(90deg, #3498db, #9b59b6, #3498db);
+  background: linear-gradient(90deg, #3498db, #2563eb, #3498db);
   background-size: 200% 100%;
   animation: moveGradient 2s linear infinite;
   color: white;
@@ -177,5 +177,37 @@ button:disabled {
   100% {
     background-position: 200% 50%;
   }
+}
+
+.emulators-grid {
+  position: relative;
+  min-height: 200px;
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  position: relative;
+}
+
+@media (min-width: 1024px) {
+  .grid-container {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .grid-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+h2 {
+  font-size: 1.8rem;
+  color: #34495e;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 0.5rem;
 }
 </style> 

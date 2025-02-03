@@ -30,14 +30,13 @@
       <TransitionGroup
         name="emulator-list"
         tag="div"
-        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        class="grid-container"
       >
         <EmulatorCard
           v-for="emulator in filteredAvailableEmulators"
           :key="emulator.name"
           :emulator="emulator"
           :errors="errors"
-          class="emulator-card"
         >
           <template #actions>
             <button 
@@ -124,6 +123,25 @@ h2 {
   min-height: 200px;
 }
 
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  position: relative;
+}
+
+@media (min-width: 1024px) {
+  .grid-container {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .grid-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 .emulator-card {
   background: white;
   border-radius: 16px;
@@ -173,7 +191,7 @@ h2 {
 }
 
 button.primary {
-  background: linear-gradient(90deg, #3498db, #9b59b6, #3498db);
+  background: linear-gradient(90deg, #3498db, #2563eb, #3498db);
   background-size: 200% 100%;
   animation: moveGradient 2s linear infinite;
   color: white;
@@ -187,7 +205,7 @@ button.primary {
 
 button.primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(155, 89, 182, 0.2);
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
 }
 
 button.primary:active {

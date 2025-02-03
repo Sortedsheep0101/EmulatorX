@@ -53,7 +53,7 @@ function formatDate(dateString?: string) {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #3498db, #9b59b6, #3498db);
+  background: linear-gradient(90deg, #3498db, #2563eb, #3498db);
   opacity: 0;
   transition: opacity 0.2s;
   background-size: 200% 100%;
@@ -90,7 +90,7 @@ function formatDate(dateString?: string) {
 }
 
 .version {
-  background: linear-gradient(90deg, #3498db, #9b59b6, #3498db);
+  background: linear-gradient(90deg, #3498db, #2563eb, #3498db);
   background-size: 200% 100%;
   animation: moveGradient 2s linear infinite;
   color: white;

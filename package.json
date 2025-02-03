@@ -1,36 +1,31 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "EmulatorX",
+  "name": "emulatorx",
+  "private": true,
   "version": "0.1.0",
-  "identifier": "com.emulatorx.app",
-  "build": {
-    "beforeDevCommand": "set CI=true && yarn dev",
-    "beforeBuildCommand": "set CI=true && yarn build"
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "tauri": "tauri"
   },
-  "app": {
-    "windows": [
-      {
-        "title": "EmulatorX",
-        "width": 800,
-        "height": 600,
-        "decorations": true,
-        "label": "EmulatorX"
-      }
-    ],
-    "security": {
-      "csp": null
-    },
-    "withGlobalTauri": true
+  "dependencies": {
+    "vue": "^3.5.13",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "tailwindcss": "^3.4.1",
+    "postcss": "^8.4.35",
+    "autoprefixer": "^10.4.17",
+    "nuxt": "^3.10.3"
   },
-  "bundle": {
-    "active": true,
-    "targets": "all",
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ]
-  }
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "~5.6.2",
+    "@tauri-apps/cli": "^2",
+    "sass": "^1.71.1",
+    "@nuxt/devtools": "latest"
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

@@ -1,10 +1,12 @@
 import { ref, reactive } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 
 export interface RomMetadata {
   name: string;
   size: number;
   path: string;
   lastModified?: number;
+  downloaded?: boolean;
 }
 
 export interface ApiResponse<T> {
@@ -33,15 +35,20 @@ class RomApiClient {
       });
       console.log('Response status:', response.status);
       
-      const data = await response.json();
-      console.log('Response data:', data);
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
+      
+      if (!responseData.success || !Array.isArray(responseData.data)) {
+        throw new Error('Invalid response format from server');
+      }
       
       return {
         success: true,
-        data: data.map((rom: RomMetadata) => ({
+        data: responseData.data.map((rom: RomMetadata) => ({
           ...rom,
           lastModified: rom.lastModified || Date.now()
-        }))
+        })),
+        count: responseData.count
       };
     } catch (error) {
       console.error('API Error:', error);
@@ -52,19 +59,21 @@ class RomApiClient {
     }
   }
 
-  async downloadRom(filename: string): Promise<Blob> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/roms/download/${encodeURIComponent(filename)}`);
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to download ROM');
-      }
-      
-      return await response.blob();
-    } catch (error) {
-      throw error instanceof Error ? error : new Error('Failed to download ROM');
-    }
+  async downloadRom(filename: string): Promise<string> {
+    const downloadUrl = `${this.baseUrl}/api/roms/download/${encodeURIComponent(filename)}`;
+    console.log('Download URL:', downloadUrl);
+    return await invoke('download_rom', { 
+      url: downloadUrl, 
+      filename 
+    });
+  }
+
+  async isRomDownloaded(filename: string): Promise<boolean> {
+    return await invoke('is_rom_downloaded', { filename });
+  }
+
+  async deleteRom(filename: string): Promise<void> {
+    return await invoke('delete_rom', { filename });
   }
 }
 
@@ -85,7 +94,14 @@ export function useRomApi(baseUrl: string) {
       const response = await api.listRoms();
       
       if (response.success && response.data) {
-        state.roms = response.data;
+        // Check downloaded status for each ROM
+        const romsWithStatus = await Promise.all(
+          response.data.map(async (rom) => ({
+            ...rom,
+            downloaded: await api.isRomDownloaded(rom.name)
+          }))
+        );
+        state.roms = romsWithStatus;
       } else {
         throw new Error(response.error || 'Failed to load ROMs');
       }
@@ -100,18 +116,46 @@ export function useRomApi(baseUrl: string) {
   async function downloadRom(rom: RomMetadata) {
     try {
       state.loading = true;
-      const blob = await api.downloadRom(rom.name);
+      state.error = null;
+      console.log(`Starting download for ROM: ${rom.name}`);
       
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = rom.name;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      const filepath = await api.downloadRom(rom.name);
+      console.log('ROM downloaded to:', filepath);
+      
+      // Verify the download was successful
+      const isDownloaded = await api.isRomDownloaded(rom.name);
+      if (!isDownloaded) {
+        throw new Error('ROM file not found after download');
+      }
+      
+      // Update the downloaded status in the state
+      const romIndex = state.roms.findIndex(r => r.name === rom.name);
+      if (romIndex !== -1) {
+        state.roms[romIndex].downloaded = true;
+      }
+      
+      console.log(`Download completed successfully for ${rom.name}`);
     } catch (error) {
+      console.error('Download error:', error);
       state.error = error instanceof Error ? error.message : 'Failed to download ROM';
+      throw error;
+    } finally {
+      state.loading = false;
+    }
+  }
+
+  async function deleteRom(rom: RomMetadata) {
+    try {
+      state.loading = true;
+      await api.deleteRom(rom.name);
+      
+      // Update the downloaded status in the state
+      const romIndex = state.roms.findIndex(r => r.name === rom.name);
+      if (romIndex !== -1) {
+        state.roms[romIndex].downloaded = false;
+      }
+    } catch (error) {
+      state.error = error instanceof Error ? error.message : 'Failed to delete ROM';
     } finally {
       state.loading = false;
     }
@@ -120,7 +164,8 @@ export function useRomApi(baseUrl: string) {
   return {
     state,
     loadRoms,
-    downloadRom
+    downloadRom,
+    deleteRom
   };
 }
 

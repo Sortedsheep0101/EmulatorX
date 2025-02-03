@@ -1,17 +1,17 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, File};
 use std::io::{copy, Read, Write};
-use std::path::Path;
-use tauri::Manager;
+use std::path::{PathBuf, Path};
 use std::process::Command;
 use std::env::consts::OS;
-use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_autostart::ManagerExt;
+use reqwest::Client;
+use futures_util::StreamExt;
 
 fn get_installation_dir() -> Result<std::path::PathBuf, String> {
     let local_app_data = dirs::data_local_dir()
@@ -357,11 +357,7 @@ async fn save_settings(settings: Settings) -> Result<(), String> {
     let json = serde_json::to_string_pretty(&settings)
         .map_err(|e| format!("Failed to serialize settings: {}", e))?;
     
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(settings_file)
+    let mut file = File::open(settings_file)
         .map_err(|e| format!("Failed to open settings file: {}", e))?;
     
     file.write_all(json.as_bytes())
@@ -383,6 +379,103 @@ async fn toggle_auto_launch(app_handle: tauri::AppHandle, enable: bool) -> Resul
     Ok(())
 }
 
+#[derive(Debug, Deserialize)]
+struct RomMetadata {
+    name: String,
+    size: u64,
+    last_modified: u64,
+    path: String,
+}
+
+#[tauri::command]
+async fn download_rom(url: String, filename: String) -> Result<String, String> {
+    let install_dir = get_installation_dir()?;
+    let roms_dir = install_dir.join("roms");
+    fs::create_dir_all(&roms_dir).map_err(|e| format!("Failed to create roms directory: {}", e))?;
+    
+    let filepath = roms_dir.join(&filename);
+    println!("Starting ROM download to: {:?}", filepath);
+    
+    // Create a new client for the download
+    let client = Client::new();
+    
+    // Create the download request
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to start download: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("Download failed with status: {}", response.status()));
+    }
+
+    let total_size = response.content_length().unwrap_or(0);
+    println!("Expected file size: {} bytes", total_size);
+
+    // Create the output file
+    let mut file = File::create(&filepath)
+        .map_err(|e| format!("Failed to create file: {}", e))?;
+
+    // Stream the download
+    let mut downloaded: u64 = 0;
+    let mut last_percentage = 0;
+    let mut stream = response.bytes_stream();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| format!("Error during download: {}", e))?;
+        file.write_all(&chunk)
+            .map_err(|e| format!("Failed to write to file: {}", e))?;
+        
+        downloaded += chunk.len() as u64;
+        
+        // Only log every 10% progress
+        if total_size > 0 {
+            let percentage = (downloaded * 100 / total_size) as u8;
+            if percentage >= last_percentage + 10 {
+                println!("Download progress: {}%", percentage);
+                last_percentage = percentage;
+            }
+        }
+    }
+
+    // Verify the download
+    let final_size = fs::metadata(&filepath)
+        .map_err(|e| format!("Failed to get file metadata: {}", e))?
+        .len();
+
+    if total_size > 0 && final_size != total_size {
+        fs::remove_file(&filepath).ok();
+        return Err(format!(
+            "Download incomplete. Expected {} bytes but got {} bytes",
+            total_size, final_size
+        ));
+    }
+
+    println!("Download completed successfully. Final size: {} bytes", final_size);
+    Ok(filepath.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+fn is_rom_downloaded(filename: String) -> Result<bool, String> {
+    let install_dir = get_installation_dir()?;
+    let rom_path = install_dir.join("roms").join(filename);
+    Ok(rom_path.exists())
+}
+
+#[tauri::command]
+fn delete_rom(filename: String) -> Result<(), String> {
+    let install_dir = get_installation_dir()?;
+    let rom_path = install_dir.join("roms").join(filename);
+    
+    if rom_path.exists() {
+        fs::remove_file(rom_path)
+            .map_err(|e| format!("Failed to delete ROM: {}", e))?;
+    }
+    
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
@@ -395,7 +488,10 @@ async fn main() {
             get_install_path,
             save_settings,
             load_settings,
-            toggle_auto_launch
+            toggle_auto_launch,
+            download_rom,
+            is_rom_downloaded,
+            delete_rom
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

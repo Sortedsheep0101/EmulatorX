@@ -38,14 +38,28 @@
           <span class="size-badge">{{ formatSize(rom.size) }}</span>
           <span class="date-badge">{{ formatDate(rom.lastModified) }}</span>
         </div>
-        <button 
-          @click="() => downloadRom(rom)"
-          class="primary" 
-          :disabled="state.loading"
-        >
-          <span v-if="state.loading" class="loader"></span>
-          <span v-else>Download</span>
-        </button>
+        <div v-if="state.error" class="error-message">
+          {{ state.error }}
+        </div>
+        <div class="button-group">
+          <button 
+            @click="() => downloadRom(rom)"
+            class="primary" 
+            :class="{ 'downloaded': rom.downloaded }"
+            :disabled="state.loading"
+          >
+            <span v-if="state.loading" class="loader"></span>
+            <span v-else>{{ rom.downloaded ? 'Downloaded' : 'Download' }}</span>
+          </button>
+          <button 
+            v-if="rom.downloaded"
+            @click="() => deleteRom(rom)"
+            class="delete"
+            :disabled="state.loading"
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -56,7 +70,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRomApi, formatSize, formatDate, type RomMetadata } from '~/composables/useRomApi';
 
 const searchQuery = ref('');
-const { state, loadRoms, downloadRom } = useRomApi('http://localhost:1248');
+const { state, loadRoms, downloadRom, deleteRom } = useRomApi('http://localhost:1248');
 
 const filteredRoms = computed(() => {
   return state.roms.filter(rom => 
@@ -182,5 +196,45 @@ button:disabled {
   100% {
     background-position: 200% 50%;
   }
+}
+
+.button-group {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+button.primary.downloaded {
+  background: linear-gradient(90deg, #22c55e, #16a34a, #22c55e);
+  background-size: 200% 100%;
+  animation: moveGradient 2s linear infinite;
+}
+
+button.delete {
+  background: #ef4444;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+button.delete:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+button.delete:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.error-message {
+  color: #dc2626;
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+  word-break: break-word;
 }
 </style> 

@@ -306,11 +306,12 @@ async fn run_emulator(emulator: String) -> Result<(), String> {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Settings {
+#[derive(Serialize, Deserialize)]
+struct AppSettings {
     auto_start: bool,
     check_updates: bool,
     close_to_tray: bool,
+    rom_server_url: String,
 }
 
 #[tauri::command]
@@ -328,40 +329,37 @@ fn get_settings_file() -> Result<PathBuf, String> {
 }
 
 #[tauri::command]
-fn load_settings() -> Result<Settings, String> {
-    let settings_file = get_settings_file()?;
+fn load_settings() -> Result<AppSettings, String> {
+    let install_dir = get_installation_dir()?;
+    let settings_file = install_dir.join("settings.json");
     
-    if !settings_file.exists() {
-        return Ok(Settings {
+    if settings_file.exists() {
+        let contents = fs::read_to_string(&settings_file)
+            .map_err(|e| format!("Failed to read settings file: {}", e))?;
+        
+        serde_json::from_str(&contents)
+            .map_err(|e| format!("Failed to parse settings: {}", e))
+    } else {
+        // Default settings
+        Ok(AppSettings {
             auto_start: false,
             check_updates: true,
             close_to_tray: false,
-        });
+            rom_server_url: "http://localhost:1248".to_string(),
+        })
     }
-
-    let mut file = File::open(settings_file)
-        .map_err(|e| format!("Failed to open settings file: {}", e))?;
-    
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)
-        .map_err(|e| format!("Failed to read settings file: {}", e))?;
-    
-    serde_json::from_str(&contents)
-        .map_err(|e| format!("Failed to parse settings: {}", e))
 }
 
 #[tauri::command]
-async fn save_settings(settings: Settings) -> Result<(), String> {
-    let settings_file = get_settings_file()?;
+fn save_settings(settings: AppSettings) -> Result<(), String> {
+    let install_dir = get_installation_dir()?;
+    let settings_file = install_dir.join("settings.json");
     
     let json = serde_json::to_string_pretty(&settings)
         .map_err(|e| format!("Failed to serialize settings: {}", e))?;
     
-    let mut file = File::open(settings_file)
-        .map_err(|e| format!("Failed to open settings file: {}", e))?;
-    
-    file.write_all(json.as_bytes())
-        .map_err(|e| format!("Failed to write settings: {}", e))?;
+    fs::write(&settings_file, json)
+        .map_err(|e| format!("Failed to write settings file: {}", e))?;
     
     Ok(())
 }

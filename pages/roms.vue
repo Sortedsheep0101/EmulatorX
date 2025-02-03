@@ -4,6 +4,18 @@
       <h2>Available ROMs</h2>
     </div>
 
+    <div class="server-config">
+      <input 
+        type="text" 
+        v-model="serverAddress"
+        placeholder="Server address (e.g. http://localhost:1248)"
+        class="server-input"
+      >
+      <button @click="handleUpdateServer" class="primary">
+        Connect
+      </button>
+    </div>
+
     <div class="filters">
       <div class="search-box">
         <input 
@@ -70,13 +82,17 @@ import { ref, computed, onMounted } from 'vue';
 import { useRomApi, formatSize, formatDate, type RomMetadata } from '~/composables/useRomApi';
 
 const searchQuery = ref('');
-const { state, loadRoms, downloadRom, deleteRom } = useRomApi('http://localhost:1248');
+const { state, serverAddress, loadRoms, updateServer, downloadRom, deleteRom } = useRomApi('http://localhost:1248');
 
 const filteredRoms = computed(() => {
   return state.roms.filter(rom => 
     rom.name.toLowerCase().includes(searchQuery.value.toLowerCase())
   );
 });
+
+async function handleUpdateServer() {
+  await updateServer(serverAddress.value);
+}
 
 onMounted(() => {
   loadRoms().catch(err => {
@@ -95,6 +111,28 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+}
+
+.server-config {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  align-items: center;
+}
+
+.server-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+
+.server-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
 }
 
 .filters {

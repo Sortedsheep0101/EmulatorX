@@ -1,4 +1,4 @@
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 
 export interface RomMetadata {
@@ -15,6 +15,13 @@ export interface ApiResponse<T> {
   count?: number;
   error?: string;
   details?: string;
+}
+
+interface Settings {
+  auto_start: boolean;
+  check_updates: boolean;
+  close_to_tray: boolean;
+  rom_server_url: string;
 }
 
 class RomApiClient {
@@ -77,8 +84,9 @@ class RomApiClient {
   }
 }
 
-export function useRomApi(baseUrl: string) {
-  const api = new RomApiClient(baseUrl);
+export function useRomApi(initialBaseUrl: string) {
+  const serverAddress = ref(initialBaseUrl);
+  const api = ref(new RomApiClient(serverAddress.value));
   
   const state = reactive({
     roms: [] as RomMetadata[],
@@ -86,19 +94,45 @@ export function useRomApi(baseUrl: string) {
     error: null as string | null
   });
 
+  // Load the saved server URL on mount
+  onMounted(async () => {
+    try {
+      const settings = await invoke<Settings>('load_settings');
+      serverAddress.value = settings.rom_server_url;
+      api.value = new RomApiClient(serverAddress.value);
+    } catch (error) {
+      console.error('Failed to load server settings:', error);
+    }
+  });
+
+  async function updateServer(newUrl: string) {
+    try {
+      serverAddress.value = newUrl;
+      api.value = new RomApiClient(newUrl);
+      
+      // Save the new URL to settings
+      const settings = await invoke<Settings>('load_settings');
+      settings.rom_server_url = newUrl;
+      await invoke('save_settings', { settings });
+      
+      // Reload the ROMs list
+      await loadRoms();
+    } catch (error) {
+      console.error('Failed to update server:', error);
+      state.error = error instanceof Error ? error.message : 'Failed to update server';
+    }
+  }
+
   async function loadRoms() {
     state.loading = true;
     state.error = null;
-    
     try {
-      const response = await api.listRoms();
-      
+      const response = await api.value.listRoms();
       if (response.success && response.data) {
-        // Check downloaded status for each ROM
         const romsWithStatus = await Promise.all(
-          response.data.map(async (rom) => ({
+          response.data.map(async (rom: RomMetadata) => ({
             ...rom,
-            downloaded: await api.isRomDownloaded(rom.name)
+            downloaded: await api.value.isRomDownloaded(rom.name)
           }))
         );
         state.roms = romsWithStatus;
@@ -119,17 +153,17 @@ export function useRomApi(baseUrl: string) {
       state.error = null;
       console.log(`Starting download for ROM: ${rom.name}`);
       
-      const filepath = await api.downloadRom(rom.name);
+      const filepath = await api.value.downloadRom(rom.name);
       console.log('ROM downloaded to:', filepath);
       
       // Verify the download was successful
-      const isDownloaded = await api.isRomDownloaded(rom.name);
+      const isDownloaded = await api.value.isRomDownloaded(rom.name);
       if (!isDownloaded) {
         throw new Error('ROM file not found after download');
       }
       
       // Update the downloaded status in the state
-      const romIndex = state.roms.findIndex(r => r.name === rom.name);
+      const romIndex = state.roms.findIndex((r: RomMetadata) => r.name === rom.name);
       if (romIndex !== -1) {
         state.roms[romIndex].downloaded = true;
       }
@@ -147,10 +181,10 @@ export function useRomApi(baseUrl: string) {
   async function deleteRom(rom: RomMetadata) {
     try {
       state.loading = true;
-      await api.deleteRom(rom.name);
+      await api.value.deleteRom(rom.name);
       
       // Update the downloaded status in the state
-      const romIndex = state.roms.findIndex(r => r.name === rom.name);
+      const romIndex = state.roms.findIndex((r: RomMetadata) => r.name === rom.name);
       if (romIndex !== -1) {
         state.roms[romIndex].downloaded = false;
       }
@@ -163,7 +197,9 @@ export function useRomApi(baseUrl: string) {
 
   return {
     state,
+    serverAddress,
     loadRoms,
+    updateServer,
     downloadRom,
     deleteRom
   };

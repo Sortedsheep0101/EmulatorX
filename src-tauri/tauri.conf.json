@@ -4,10 +4,8 @@
   "version": "0.1.0",
   "identifier": "com.emulatorx.app",
   "build": {
-    "beforeDevCommand": "set CI=true && yarn dev --port 1420",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "set CI=true && yarn build",
-    "frontendDist": "../dist"
+    "beforeDevCommand": "set CI=true && yarn dev",
+    "beforeBuildCommand": "set CI=true && yarn build"
   },
   "app": {
     "windows": [
@@ -21,7 +19,8 @@
     ],
     "security": {
       "csp": null
-    }
+    },
+    "withGlobalTauri": true
   },
   "bundle": {
     "active": true,

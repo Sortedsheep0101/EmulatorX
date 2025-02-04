@@ -45,7 +45,20 @@
 
     <div v-else class="roms-grid">
       <div v-for="rom in filteredRoms" :key="rom.path" class="rom-card">
-        <h3>{{ rom.name }}</h3>
+        <div class="rom-card-header">
+          <h3>{{ rom.name }}</h3>
+          <button 
+            v-if="rom.downloaded"
+            @click="() => openInExplorer(rom)"
+            class="explorer-button"
+            :disabled="state.loading"
+            title="View in Explorer"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="folder-icon">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </button>
+        </div>
         <div class="rom-info">
           <span class="size-badge">{{ formatSize(rom.size) }}</span>
           <span class="date-badge">{{ formatDate(rom.lastModified) }}</span>
@@ -54,6 +67,18 @@
           {{ state.error }}
         </div>
         <div class="button-group">
+          <button 
+            v-if="rom.downloaded"
+            @click="() => playRom(rom)"
+            class="play"
+            :disabled="state.loading"
+            title="Play ROM"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="play-icon">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Play
+          </button>
           <button 
             @click="() => downloadRom(rom)"
             class="primary" 
@@ -80,6 +105,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRomApi, formatSize, formatDate, type RomMetadata } from '~/composables/useRomApi';
+import { invoke } from '@tauri-apps/api/core';
 
 const searchQuery = ref('');
 const { state, serverAddress, loadRoms, updateServer, downloadRom, deleteRom } = useRomApi('http://localhost:1248');
@@ -90,8 +116,85 @@ const filteredRoms = computed(() => {
   );
 });
 
+const playingRom = ref<string | null>(null);
+
+function getEmulatorForRom(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'iso':
+    case 'gcm':
+    case 'wbfs':
+    case 'rvz':
+      return 'Dolphin';
+    case 'xex':
+    case 'iso':
+      return 'Xenia';
+    case 'iso':
+    case 'bin':
+      return 'PCSX2';
+    case 'pkg':
+    case 'rap':
+      return 'RPCS3';
+    case 'iso':
+    case 'bin':
+    case 'img':
+      return 'DuckStation';
+    case 'gba':
+    case 'gbc':
+    case 'gb':
+      return 'mGBA';
+    case 'iso':
+      return 'xemu';
+    case 'iso':
+    case 'cso':
+    case 'pbp':
+      return 'PPSSPP';
+    case 'gdi':
+    case 'cdi':
+    case 'chd':
+      return 'Flycast';
+    case 'smc':
+    case 'sfc':
+      return 'ZSNES';
+    case 'nes':
+    case 'fds':
+      return 'Mesen';
+    default:
+      throw new Error('Unsupported ROM format');
+  }
+}
+
 async function handleUpdateServer() {
   await updateServer(serverAddress.value);
+}
+
+async function openInExplorer(rom: RomMetadata) {
+  try {
+    await invoke('open_rom_folder', { filename: rom.name });
+  } catch (error) {
+    console.error('Failed to open explorer:', error);
+  }
+}
+
+async function playRom(rom: RomMetadata) {
+  if (playingRom.value === rom.name) return;
+  playingRom.value = rom.name;
+  
+  try {
+    const emulator = getEmulatorForRom(rom.name);
+    const installDir = await invoke('get_install_path');
+    const romPath = `${installDir}/roms/${rom.name}`;
+    
+    await invoke('run_emulator_with_rom', {
+      emulator,
+      romPath: romPath
+    });
+  } catch (error) {
+    console.error('Failed to launch ROM:', error);
+    // You might want to show this error to the user
+  } finally {
+    playingRom.value = null;
+  }
 }
 
 onMounted(() => {
@@ -163,6 +266,18 @@ onMounted(() => {
 .rom-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.rom-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.rom-card-header h3 {
+  margin: 0;
+  padding-right: 1rem;
 }
 
 .rom-info {
@@ -248,6 +363,24 @@ button.primary.downloaded {
   animation: moveGradient 2s linear infinite;
 }
 
+button.secondary {
+  background: linear-gradient(90deg, #64748b, #475569, #64748b);
+  background-size: 200% 100%;
+  animation: moveGradient 2s linear infinite;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+button.secondary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(71, 85, 105, 0.2);
+}
+
 button.delete {
   background: #ef4444;
   color: white;
@@ -274,5 +407,73 @@ button.delete:disabled {
   font-size: 0.9rem;
   margin: 0.5rem 0;
   word-break: break-word;
+}
+
+.explorer-button {
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+  border: none;
+  border-radius: 6px;
+  background: #3498db;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.explorer-button:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+
+.explorer-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.folder-icon {
+  width: 16px;
+  height: 16px;
+}
+
+button.play {
+  background: linear-gradient(90deg, #10b981, #059669, #10b981);
+  background-size: 200% 100%;
+  animation: moveGradient 2s linear infinite;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+button.play:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+button.play:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.play-icon {
+  width: 16px;
+  height: 16px;
 }
 </style> 

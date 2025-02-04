@@ -245,7 +245,7 @@ fn get_emulator_executable(install_dir: &PathBuf, emulator: &str) -> Result<Path
         ("PCSX2", "windows") => base_path.join("pcsx2-qt.exe"),
         ("RPCS3", "windows") => base_path.join("rpcs3.exe"),
         ("DuckStation", "windows") => base_path.join("duckstation-qt-x64-ReleaseLTCG.exe"),
-        ("mGBA", "windows") => base_path.join("mGBA.exe"),
+        ("mGBA", "windows") => base_path.join("mGBA-0.10.4-win32").join("mGBA.exe"),
         ("xemu", "windows") => base_path.join("xemu.exe"),
         _ => return Err(format!("Unsupported OS {} for emulator {}", OS, emulator)),
     };
@@ -474,6 +474,98 @@ fn delete_rom(filename: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn open_rom_folder(filename: String) -> Result<(), String> {
+    let install_dir = get_installation_dir()?;
+    let rom_path = install_dir.join("roms").join(&filename);
+    
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer")
+            .args(["/select,", &rom_path.to_string_lossy()])
+            .spawn()
+            .map_err(|e| format!("Failed to open explorer: {}", e))?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .args(["-R", &rom_path.to_string_lossy()])
+            .spawn()
+            .map_err(|e| format!("Failed to open finder: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        if let Ok(output) = Command::new("xdg-mime")
+            .args(["query", "default", "inode/directory"])
+            .output()
+        {
+            let file_manager = String::from_utf8_lossy(&output.stdout)
+                .trim()
+                .to_string();
+
+            match file_manager.as_str() {
+                "dolphin.desktop" => {
+                    Command::new("dolphin")
+                        .args(["--select", &rom_path.to_string_lossy()])
+                        .spawn()
+                },
+                "nautilus.desktop" => {
+                    Command::new("nautilus")
+                        .args(["--select", &rom_path.to_string_lossy()])
+                        .spawn()
+                },
+                _ => {
+                    Command::new("xdg-open")
+                        .arg(rom_path.parent().unwrap_or(&rom_path))
+                        .spawn()
+                }
+            }.map_err(|e| format!("Failed to open file manager: {}", e))?;
+        }
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn run_emulator_with_rom(emulator: String, rom_path: String) -> Result<(), String> {
+    let install_dir = get_installation_dir()?;
+    
+    let exe_path = match emulator.as_str() {
+        "Dolphin" => get_emulator_executable(&install_dir, &emulator)?,
+        "Xenia" => get_emulator_executable(&install_dir, &emulator)?,
+        "PCSX2" => get_emulator_executable(&install_dir, &emulator)?,
+        "RPCS3" => get_emulator_executable(&install_dir, &emulator)?,
+        "DuckStation" => get_emulator_executable(&install_dir, &emulator)?,
+        "mGBA" => get_emulator_executable(&install_dir, &emulator)?,
+        "xemu" => get_emulator_executable(&install_dir, &emulator)?,
+        "PPSSPP" => install_dir.join("ppsspp").join("PPSSPPWindows64.exe"),
+        "Flycast" => install_dir.join("flycast").join("flycast.exe"),
+        "ZSNES" => install_dir.join("zsnes").join("zsnesw.exe"),
+        "Mesen" => install_dir.join("mesen").join("Mesen.exe"),
+        _ => return Err(format!("Unknown emulator: {}", emulator)),
+    };
+
+    if !exe_path.exists() {
+        return Err(format!("Emulator executable not found at {:?}", exe_path));
+    }
+
+    match Command::new(&exe_path)
+        .arg(&rom_path)
+        .current_dir(exe_path.parent().unwrap_or(&install_dir))
+        .spawn()
+    {
+        Ok(_) => {
+            println!("Successfully launched {} with ROM {}", emulator, rom_path);
+            Ok(())
+        }
+        Err(e) => {
+            Err(format!("Failed to launch {} with ROM: {} (path: {:?})", emulator, e, exe_path))
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
@@ -489,7 +581,9 @@ async fn main() {
             toggle_auto_launch,
             download_rom,
             is_rom_downloaded,
-            delete_rom
+            delete_rom,
+            open_rom_folder,
+            run_emulator_with_rom,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

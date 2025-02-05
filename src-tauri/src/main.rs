@@ -60,6 +60,12 @@ async fn check_installations() -> Result<Vec<EmulatorStatus>, String> {
         ("Flycast", "flycast"),
         ("ZSNES", "zsnes"),
         ("Mesen", "mesen"),
+        ("Mupen64Plus", "mupen64plus"),
+        ("Project64", "project64"),
+        ("Redream", "redream"),
+        ("DEmul", "demul"),
+        ("Cxbx-Reloaded", "cxbx-reloaded"),
+        ("MAME", "mame"),
     ];
     
     let statuses = emulators.into_iter()
@@ -130,6 +136,36 @@ async fn download_emulator(emulator: String) -> Result<(), String> {
             "mesen.zip",
             false,
         ).await,
+        "Mupen64Plus" => download_and_extract(
+            "https://github.com/mupen64plus/mupen64plus-core/releases/download/2.5/mupen64plus-bundle-win32-2.5.zip",
+            "mupen64plus.zip",
+            false,
+        ).await,
+        "Project64" => download_and_extract(
+            "https://www.pj64-emu.com/file/project64-3-0-1-5664-2df3434/",
+            "project64.zip",
+            false,
+        ).await,
+        "Redream" => download_and_extract(
+            "https://redream.io/download/redream.x86_64-windows-latest.zip",
+            "redream.zip",
+            false,
+        ).await,
+        "DEmul" => download_and_extract(
+            "http://demul.emulation64.com/files/demul0582.zip",
+            "demul.zip",
+            false,
+        ).await,
+        "Cxbx-Reloaded" => download_and_extract(
+            "https://github.com/Cxbx-Reloaded/Cxbx-Reloaded/releases/download/CI-b0c24d7/CxbxReloaded-Release-VS2022.zip",
+            "cxbx-reloaded.zip",
+            false,
+        ).await,
+        "MAME" => download_and_extract(
+            "https://github.com/mamedev/mame/releases/download/mame0262/mame0262b_64bit.exe",
+            "mame.zip",
+            false,
+        ).await,
         _ => Err("Unknown emulator".into()),
     }
 }
@@ -161,7 +197,7 @@ async fn download_and_extract(url: &str, filename: &str, is_7z: bool) -> Result<
     
     println!("Actual downloaded size: {} bytes", content.len());
     
-    if content.len() < 1000000 { // Less than 1MB
+    if content.len() < 100000 { // Less than 100KB
         return Err(format!("Download seems too small ({} bytes). Possible error.", content.len()));
     }
 
@@ -229,6 +265,16 @@ async fn uninstall_emulator(emulator: String) -> Result<(), String> {
         "DuckStation" => "duckstation",
         "mGBA" => "mgba",
         "xemu" => "xemu",
+        "Mupen64Plus" => "mupen64plus",
+        "Project64" => "project64",
+        "Redream" => "redream",
+        "DEmul" => "demul",
+        "Cxbx-Reloaded" => "cxbx-reloaded",
+        "MAME" => "mame",
+        "PPSSPP" => "ppsspp",
+        "Flycast" => "flycast",
+        "ZSNES" => "zsnes",
+        "Mesen" => "mesen",
         _ => return Err("Unknown emulator".into()),
     });
 
@@ -249,6 +295,12 @@ fn get_emulator_executable(install_dir: &PathBuf, emulator: &str) -> Result<Path
         "DuckStation" => "duckstation",
         "mGBA" => "mgba",
         "xemu" => "xemu",
+        "Mupen64Plus" => "mupen64plus",
+        "Project64" => "project64",
+        "Redream" => "redream",
+        "DEmul" => "demul",
+        "Cxbx-Reloaded" => "cxbx-reloaded",
+        "MAME" => "mame",
         _ => return Err("Unknown emulator".into()),
     });
 
@@ -262,6 +314,12 @@ fn get_emulator_executable(install_dir: &PathBuf, emulator: &str) -> Result<Path
         ("DuckStation", "windows") => base_path.join("duckstation-qt-x64-ReleaseLTCG.exe"),
         ("mGBA", "windows") => base_path.join("mGBA-0.10.4-win32").join("mGBA.exe"),
         ("xemu", "windows") => base_path.join("xemu.exe"),
+        ("Mupen64Plus", "windows") => base_path.join("mupen64plus-ui-console.exe"),
+        ("Project64", "windows") => base_path.join("Project64.exe"),
+        ("Redream", "windows") => base_path.join("redream.exe"),
+        ("DEmul", "windows") => base_path.join("demul.exe"),
+        ("Cxbx-Reloaded", "windows") => base_path.join("cxbx.exe"),
+        ("MAME", "windows") => base_path.join("mame.exe"),
         _ => return Err(format!("Unsupported OS {} for emulator {}", OS, emulator)),
     };
 
@@ -296,6 +354,12 @@ async fn run_emulator(emulator: String) -> Result<(), String> {
         "DuckStation" => get_emulator_executable(&install_dir, &emulator)?,
         "mGBA" => get_emulator_executable(&install_dir, &emulator)?,
         "xemu" => get_emulator_executable(&install_dir, &emulator)?,
+        "Mupen64Plus" => get_emulator_executable(&install_dir, &emulator)?,
+        "Project64" => get_emulator_executable(&install_dir, &emulator)?,
+        "Redream" => get_emulator_executable(&install_dir, &emulator)?,
+        "DEmul" => get_emulator_executable(&install_dir, &emulator)?,
+        "Cxbx-Reloaded" => get_emulator_executable(&install_dir, &emulator)?,
+        "MAME" => get_emulator_executable(&install_dir, &emulator)?,
         "PPSSPP" => install_dir.join("ppsspp").join("PPSSPPWindows64.exe"),
         "Flycast" => install_dir.join("flycast").join("flycast.exe"),
         "ZSNES" => install_dir.join("zsnes").join("zsnesw.exe"),
@@ -481,10 +545,12 @@ fn delete_rom(filename: String) -> Result<(), String> {
     let install_dir = get_installation_dir()?;
     let rom_path = install_dir.join("roms").join(filename);
     
-    if rom_path.exists() {
-        fs::remove_file(rom_path)
-            .map_err(|e| format!("Failed to delete ROM: {}", e))?;
+    if !rom_path.exists() {
+        return Err("ROM file not found".into());
     }
+
+    fs::remove_file(&rom_path)
+        .map_err(|e| format!("Failed to delete ROM: {}", e))?;
     
     Ok(())
 }
@@ -559,6 +625,12 @@ async fn run_emulator_with_rom(emulator: String, rom_path: String) -> Result<(),
         "Flycast" => install_dir.join("flycast").join("flycast.exe"),
         "ZSNES" => install_dir.join("zsnes").join("zsnesw.exe"),
         "Mesen" => install_dir.join("mesen").join("Mesen.exe"),
+        "Mupen64Plus" => get_emulator_executable(&install_dir, &emulator)?,
+        "Project64" => get_emulator_executable(&install_dir, &emulator)?,
+        "Redream" => get_emulator_executable(&install_dir, &emulator)?,
+        "DEmul" => get_emulator_executable(&install_dir, &emulator)?,
+        "Cxbx-Reloaded" => get_emulator_executable(&install_dir, &emulator)?,
+        "MAME" => get_emulator_executable(&install_dir, &emulator)?,
         _ => return Err(format!("Unknown emulator: {}", emulator)),
     };
 
@@ -566,17 +638,33 @@ async fn run_emulator_with_rom(emulator: String, rom_path: String) -> Result<(),
         return Err(format!("Emulator executable not found at {:?}", exe_path));
     }
 
-    match Command::new(&exe_path)
-        .arg(&rom_path)
-        .current_dir(exe_path.parent().unwrap_or(&install_dir))
-        .spawn()
-    {
+    // Special command line arguments for specific emulators
+    let mut command = Command::new(&exe_path);
+    match emulator.as_str() {
+        "Mupen64Plus" => {
+            command.arg("--fullscreen")
+                  .arg(&rom_path);
+        },
+        "MAME" => {
+            command.arg(Path::new(&rom_path)
+                      .file_stem()
+                      .and_then(|s| s.to_str())
+                      .ok_or("Invalid ROM path")?);
+        },
+        _ => {
+            command.arg(&rom_path);
+        }
+    }
+
+    command.current_dir(exe_path.parent().unwrap_or(&install_dir));
+    
+    match command.spawn() {
         Ok(_) => {
             println!("Successfully launched {} with ROM {}", emulator, rom_path);
             Ok(())
         }
         Err(e) => {
-            Err(format!("Failed to launch {} with ROM: {} (path: {:?})", emulator, e, exe_path))
+            Err(format!("Failed to launch {}: {} (path: {:?})", emulator, e, exe_path))
         }
     }
 }

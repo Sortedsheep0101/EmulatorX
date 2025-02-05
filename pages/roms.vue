@@ -96,9 +96,24 @@
             Play
           </button>
           <button 
-            @click="() => deleteRom(rom)"
-            class="delete"
+            @click="handleDelete(rom)"
+            class="delete-button"
+            :disabled="state.loading"
           >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              class="delete-icon" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path 
+                stroke-linecap="round" 
+                stroke-linejoin="round" 
+                stroke-width="2" 
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
+              />
+            </svg>
             Delete
           </button>
         </div>
@@ -123,7 +138,10 @@ const acceptedExtensions = [
   '.iso', '.bin', '.gba', '.gbc', '.gb', '.nes', 
   '.smc', '.sfc', '.z64', '.n64', '.v64', '.cue', 
   '.chd', '.wbfs', '.gcm', '.dol', '.elf', '.pbp', 
-  '.cso', '.xex'
+  '.cso', '.xex',
+  '.gdi', '.cdi', '.chd',
+  '.xbe', '.iso',
+  '.zip', '.7z', '.chd',
 ].join(',');
 
 const searchQuery = ref('');
@@ -138,6 +156,8 @@ const filteredRoms = computed(() => {
     rom.name.toLowerCase().includes(searchQuery.value.toLowerCase())
   );
 });
+
+const romToDelete = ref<RomMetadata | null>(null);
 
 async function loadRoms() {
   state.value.loading = true;
@@ -200,6 +220,10 @@ function getEmulatorForRom(filename: string): string {
     case 'wbfs':
     case 'rvz':
       return 'Dolphin';
+    case 'z64':
+    case 'n64':
+    case 'v64':
+      return 'Mupen64Plus';
     case 'xex':
     case 'iso':
       return 'Xenia';
@@ -267,9 +291,22 @@ async function playRom(rom: RomMetadata) {
   }
 }
 
-async function deleteRom(rom: RomMetadata) {
-  // Implement the delete logic here
-  console.log('Deleting ROM:', rom);
+async function handleDelete(rom: RomMetadata) {
+  if (window.confirm(`Are you sure you want to delete "${rom.name}"?`)) {
+    state.value.loading = true;
+    state.value.error = null;
+
+    try {
+      await invoke('delete_rom', { 
+        filename: rom.name 
+      });
+      await loadRoms();
+    } catch (error) {
+      state.value.error = error instanceof Error ? error.message : 'Failed to delete ROM';
+    } finally {
+      state.value.loading = false;
+    }
+  }
 }
 
 onMounted(() => {
@@ -566,5 +603,72 @@ button.play:disabled {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+.delete-button {
+  background: linear-gradient(90deg, #ef4444, #dc2626, #ef4444);
+  background-size: 200% 100%;
+  animation: moveGradient 2s linear infinite;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.delete-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
+
+.delete-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.delete-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.cancel-button {
+  background: #6b7280;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-button:hover {
+  background: #4b5563;
+  transform: translateY(-1px);
+}
+
+.delete-confirm-button {
+  background: linear-gradient(90deg, #ef4444, #dc2626, #ef4444);
+  background-size: 200% 100%;
+  animation: moveGradient 2s linear infinite;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-confirm-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
 }
 </style> 

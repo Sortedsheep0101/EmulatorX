@@ -17,19 +17,9 @@ const allEmulators: Emulator[] = [
     name: "Dolphin",
     installed: false,
     version: "2412",
-    lastUsed: "2024-03-15",
-    size: "45MB",
     description: "GameCube/Wii Emulator",
+    size: "45MB",
     platforms: ["nintendo"]
-  },
-  { 
-    name: "RPCS3",
-    installed: false,
-    version: "0.0.32",
-    lastUsed: "2024-03-10",
-    size: "120MB",
-    description: "PlayStation 3 Emulator",
-    platforms: ["playstation"]
   },
   { 
     name: "Xenia",
@@ -47,7 +37,15 @@ const allEmulators: Emulator[] = [
     size: "65MB",
     platforms: ["playstation"]
   },
-  {
+  { 
+    name: "RPCS3",
+    installed: false,
+    version: "0.0.32",
+    description: "PlayStation 3 Emulator",
+    size: "120MB",
+    platforms: ["playstation"]
+  },
+  { 
     name: "DuckStation",
     installed: false,
     version: "latest",
@@ -55,7 +53,7 @@ const allEmulators: Emulator[] = [
     size: "30MB",
     platforms: ["playstation"]
   },
-  {
+  { 
     name: "mGBA",
     installed: false,
     version: "0.10.4",
@@ -63,15 +61,15 @@ const allEmulators: Emulator[] = [
     size: "15MB",
     platforms: ["nintendo"]
   },
-  {
-    name: "Xemu",
+  { 
+    name: "xemu",
     installed: false,
     version: "0.8.15",
     description: "Original Xbox Emulator",
     size: "40MB",
     platforms: ["xbox"]
   },
-  {
+  { 
     name: "PPSSPP",
     installed: false,
     version: "1.18.1",
@@ -79,7 +77,7 @@ const allEmulators: Emulator[] = [
     size: "35MB",
     platforms: ["playstation"]
   },
-  {
+  { 
     name: "Flycast",
     installed: false,
     version: "2.4",
@@ -87,7 +85,7 @@ const allEmulators: Emulator[] = [
     size: "28MB",
     platforms: ["sega"]
   },
-  {
+  { 
     name: "ZSNES",
     installed: false,
     version: "1.51",
@@ -95,13 +93,61 @@ const allEmulators: Emulator[] = [
     size: "12MB",
     platforms: ["nintendo"]
   },
-  {
+  { 
     name: "Mesen",
     installed: false,
     version: "2.0.0",
     description: "NES/SNES/GB/GBC Emulator",
     size: "25MB",
     platforms: ["nintendo"]
+  },
+  { 
+    name: "Mupen64Plus",
+    installed: false,
+    version: "2.5.9",
+    description: "Nintendo 64 Emulator",
+    size: "20MB",
+    platforms: ["nintendo"]
+  },
+  { 
+    name: "Project64",
+    installed: false,
+    version: "3.0.1",
+    description: "Nintendo 64 Emulator",
+    size: "18MB",
+    platforms: ["nintendo"]
+  },
+  { 
+    name: "Redream",
+    installed: false,
+    version: "1.5.0",
+    description: "Dreamcast Emulator",
+    size: "22MB",
+    platforms: ["sega"]
+  },
+  { 
+    name: "DEmul",
+    installed: false,
+    version: "0.7",
+    description: "Sega Arcade Emulator",
+    size: "15MB",
+    platforms: ["sega"]
+  },
+  { 
+    name: "Cxbx-Reloaded",
+    installed: false,
+    version: "0.2021.0824",
+    description: "Original Xbox Emulator",
+    size: "45MB",
+    platforms: ["xbox"]
+  },
+  { 
+    name: "MAME",
+    installed: false,
+    version: "0.251",
+    description: "Arcade Machine Emulator",
+    size: "150MB",
+    platforms: ["arcade"]
   }
 ];
 
@@ -111,6 +157,7 @@ export const platforms = [
   { value: 'playstation', label: 'PlayStation' },
   { value: 'xbox', label: 'Xbox' },
   { value: 'sega', label: 'Sega' },
+  { value: 'arcade', label: 'Arcade' },
 ] as const;
 
 export function useEmulators() {

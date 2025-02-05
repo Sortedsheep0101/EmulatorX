@@ -1,19 +1,42 @@
 <template>
   <div class="roms-section">
     <div class="header-actions">
-      <h2>Available ROMs</h2>
+      <h2>ROMs Library</h2>
     </div>
 
-    <div class="server-config">
-      <input 
-        type="text" 
-        v-model="serverAddress"
-        placeholder="Server address (e.g. http://localhost:1248)"
-        class="server-input"
-      >
-      <button @click="handleUpdateServer" class="primary">
-        Connect
-      </button>
+    <div class="upload-section">
+      <div class="relative">
+        <input
+          type="file"
+          id="rom-upload"
+          @change="handleFileUpload"
+          :accept="acceptedExtensions"
+          multiple
+          class="sr-only"
+          ref="fileInput"
+        >
+        <button 
+          @click="$refs.fileInput.click()"
+          class="upload-button"
+          type="button"
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            class="upload-icon" 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path 
+              stroke-linecap="round" 
+              stroke-linejoin="round" 
+              stroke-width="2" 
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+            />
+          </svg>
+          Import ROMs
+        </button>
+      </div>
     </div>
 
     <div class="filters">
@@ -40,7 +63,7 @@
     </div>
 
     <div v-else-if="filteredRoms.length === 0" class="empty-state">
-      <p>No ROMs found matching your criteria.</p>
+      <p>No ROMs found. Import some ROMs to get started!</p>
     </div>
 
     <div v-else class="roms-grid">
@@ -48,10 +71,8 @@
         <div class="rom-card-header">
           <h3>{{ rom.name }}</h3>
           <button 
-            v-if="rom.downloaded"
             @click="() => openInExplorer(rom)"
             class="explorer-button"
-            :disabled="state.loading"
             title="View in Explorer"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="folder-icon">
@@ -61,17 +82,12 @@
         </div>
         <div class="rom-info">
           <span class="size-badge">{{ formatSize(rom.size) }}</span>
-          <span class="date-badge">{{ formatDate(rom.lastModified) }}</span>
-        </div>
-        <div v-if="state.error" class="error-message">
-          {{ state.error }}
+          <span class="date-badge">{{ formatDate(rom.last_modified * 1000) }}</span>
         </div>
         <div class="button-group">
           <button 
-            v-if="rom.downloaded"
             @click="() => playRom(rom)"
             class="play"
-            :disabled="state.loading"
             title="Play ROM"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="play-icon">
@@ -80,19 +96,8 @@
             Play
           </button>
           <button 
-            @click="() => downloadRom(rom)"
-            class="primary" 
-            :class="{ 'downloaded': rom.downloaded }"
-            :disabled="state.loading"
-          >
-            <span v-if="state.loading" class="loader"></span>
-            <span v-else>{{ rom.downloaded ? 'Downloaded' : 'Download' }}</span>
-          </button>
-          <button 
-            v-if="rom.downloaded"
             @click="() => deleteRom(rom)"
             class="delete"
-            :disabled="state.loading"
           >
             Delete
           </button>
@@ -104,17 +109,86 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useRomApi, formatSize, formatDate, type RomMetadata } from '~/composables/useRomApi';
 import { invoke } from '@tauri-apps/api/core';
+import { formatSize, formatDate } from '~/composables/useRomApi';
+
+interface RomMetadata {
+  name: string;
+  size: number;
+  last_modified: number;
+  path: string;
+}
+
+const acceptedExtensions = [
+  '.iso', '.bin', '.gba', '.gbc', '.gb', '.nes', 
+  '.smc', '.sfc', '.z64', '.n64', '.v64', '.cue', 
+  '.chd', '.wbfs', '.gcm', '.dol', '.elf', '.pbp', 
+  '.cso', '.xex'
+].join(',');
 
 const searchQuery = ref('');
-const { state, serverAddress, loadRoms, updateServer, downloadRom, deleteRom } = useRomApi('http://localhost:1248');
+const state = ref({
+  roms: [] as RomMetadata[],
+  loading: false,
+  error: null as string | null
+});
 
 const filteredRoms = computed(() => {
-  return state.roms.filter(rom => 
+  return state.value.roms.filter(rom => 
     rom.name.toLowerCase().includes(searchQuery.value.toLowerCase())
   );
 });
+
+async function loadRoms() {
+  state.value.loading = true;
+  state.value.error = null;
+  try {
+    state.value.roms = await invoke('list_roms');
+  } catch (error) {
+    state.value.error = error instanceof Error ? error.message : 'Failed to load ROMs';
+  } finally {
+    state.value.loading = false;
+  }
+}
+
+async function handleFileUpload(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (!target.files?.length) return;
+
+  state.value.loading = true;
+  state.value.error = null;
+
+  try {
+    for (const file of target.files) {
+      // Create a temporary path for the file
+      const tempPath = await invoke('create_temp_file', { 
+        filename: file.name 
+      }) as string;
+
+      // Read the file and write it to the temp location
+      const arrayBuffer = await file.arrayBuffer();
+      await invoke('write_temp_file', { 
+        path: tempPath, 
+        data: Array.from(new Uint8Array(arrayBuffer))
+      });
+
+      // Import the ROM from the temp location
+      await invoke('import_rom', { 
+        sourcePath: tempPath 
+      });
+
+      // Clean up the temp file
+      await invoke('delete_temp_file', { 
+        path: tempPath 
+      });
+    }
+    await loadRoms();
+  } catch (error) {
+    state.value.error = error instanceof Error ? error.message : 'Failed to import ROM';
+  } finally {
+    state.value.loading = false;
+  }
+}
 
 const playingRom = ref<string | null>(null);
 
@@ -164,10 +238,6 @@ function getEmulatorForRom(filename: string): string {
   }
 }
 
-async function handleUpdateServer() {
-  await updateServer(serverAddress.value);
-}
-
 async function openInExplorer(rom: RomMetadata) {
   try {
     await invoke('open_rom_folder', { filename: rom.name });
@@ -197,10 +267,13 @@ async function playRom(rom: RomMetadata) {
   }
 }
 
+async function deleteRom(rom: RomMetadata) {
+  // Implement the delete logic here
+  console.log('Deleting ROM:', rom);
+}
+
 onMounted(() => {
-  loadRoms().catch(err => {
-    console.error('Failed to load ROMs:', err);
-  });
+  loadRoms();
 });
 </script>
 
@@ -216,26 +289,32 @@ onMounted(() => {
   margin-bottom: 2rem;
 }
 
-.server-config {
+.upload-section {
+  margin-bottom: 2rem;
+}
+
+.upload-button {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
   align-items: center;
-}
-
-.server-input {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border: 1px solid #e2e8f0;
+  gap: 0.5rem;
+  background: linear-gradient(90deg, #3498db, #2563eb);
+  color: white;
+  padding: 0.75rem 1.5rem;
   border-radius: 8px;
-  font-size: 0.95rem;
-  transition: border-color 0.2s;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
 }
 
-.server-input:focus {
-  outline: none;
-  border-color: #3498db;
-  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+.upload-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+}
+
+.upload-icon {
+  width: 20px;
+  height: 20px;
 }
 
 .filters {
@@ -475,5 +554,17 @@ button.play:disabled {
 .play-icon {
   width: 16px;
   height: 16px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 </style> 

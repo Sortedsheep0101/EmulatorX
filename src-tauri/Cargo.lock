@@ -8,6 +8,7 @@ version = "0.1.0"
 dependencies = [
  "dirs 5.0.1",
  "futures-util",
+ "once_cell",
  "regex",
  "reqwest 0.11.27",
  "serde",
@@ -17,6 +18,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-autostart",
  "tauri-plugin-opener",
+ "tempfile",
  "tokio",
  "zip",
 ]

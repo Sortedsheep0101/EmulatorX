@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::fs::{self, File};
-use std::io::{copy, Read, Write};
+use std::io::{copy, Write};
 use std::path::{PathBuf, Path};
 use std::process::Command;
 use std::env::consts::OS;
@@ -12,6 +12,21 @@ use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_autostart::ManagerExt;
 use reqwest::Client;
 use futures_util::StreamExt;
+use tempfile::NamedTempFile;
+use std::collections::HashMap;
+use std::sync::Mutex;
+use once_cell::sync::Lazy;
+
+#[derive(Debug)]
+struct TempFileInfo {
+    file: NamedTempFile,
+    original_name: String,
+}
+
+// Store temporary files to clean them up later
+static TEMP_FILES: Lazy<Mutex<HashMap<String, TempFileInfo>>> = Lazy::new(|| {
+    Mutex::new(HashMap::new())
+});
 
 fn get_installation_dir() -> Result<std::path::PathBuf, String> {
     let local_app_data = dirs::data_local_dir()
@@ -377,7 +392,7 @@ async fn toggle_auto_launch(app_handle: tauri::AppHandle, enable: bool) -> Resul
     Ok(())
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct RomMetadata {
     name: String,
     size: u64,
@@ -566,6 +581,113 @@ async fn run_emulator_with_rom(emulator: String, rom_path: String) -> Result<(),
     }
 }
 
+#[tauri::command]
+fn create_temp_file(filename: String) -> Result<String, String> {
+    let temp_file = NamedTempFile::new()
+        .map_err(|e| format!("Failed to create temp file: {}", e))?;
+    
+    let path = temp_file.path().to_string_lossy().into_owned();
+    
+    TEMP_FILES.lock()
+        .map_err(|e| format!("Lock error: {}", e))?
+        .insert(path.clone(), TempFileInfo {
+            file: temp_file,
+            original_name: filename,
+        });
+    
+    Ok(path)
+}
+
+#[tauri::command]
+fn write_temp_file(path: String, data: Vec<u8>) -> Result<(), String> {
+    let mut temp_files = TEMP_FILES.lock()
+        .map_err(|e| format!("Lock error: {}", e))?;
+    
+    let temp_file = temp_files.get_mut(&path)
+        .ok_or_else(|| "Temp file not found".to_string())?;
+    
+    temp_file.file.write_all(&data)
+        .map_err(|e| format!("Failed to write to temp file: {}", e))?;
+    
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_temp_file(path: String) -> Result<(), String> {
+    TEMP_FILES.lock()
+        .map_err(|e| format!("Lock error: {}", e))?
+        .remove(&path)
+        .ok_or_else(|| "Temp file not found".to_string())?;
+    
+    Ok(())
+}
+
+#[tauri::command]
+fn import_rom(source_path: String) -> Result<(), String> {
+    let install_dir = get_installation_dir()?;
+    let roms_dir = install_dir.join("roms");
+    fs::create_dir_all(&roms_dir).map_err(|e| format!("Failed to create roms directory: {}", e))?;
+    
+    // Get the original filename from our temp files storage
+    let original_filename = TEMP_FILES.lock()
+        .map_err(|e| format!("Lock error: {}", e))?
+        .get(&source_path)
+        .ok_or("Temp file not found")?
+        .original_name
+        .clone();
+    
+    let destination = roms_dir.join(&original_filename);
+    
+    // Move the file from temp location to roms directory
+    fs::rename(&source_path, &destination)
+        .or_else(|_| {
+            // If rename fails (e.g., across devices), try copy and delete
+            match fs::copy(&source_path, &destination) {
+                Ok(_) => match fs::remove_file(&source_path) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(format!("Failed to clean up temp file: {}", e))
+                },
+                Err(e) => Err(format!("Failed to copy ROM: {}", e))
+            }
+        })
+        .map_err(|e| format!("Failed to move ROM: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+fn list_roms() -> Result<Vec<RomMetadata>, String> {
+    let install_dir = get_installation_dir()?;
+    let roms_dir = install_dir.join("roms");
+    
+    if !roms_dir.exists() {
+        fs::create_dir_all(&roms_dir).map_err(|e| format!("Failed to create roms directory: {}", e))?;
+        return Ok(Vec::new());
+    }
+    
+    let mut roms = Vec::new();
+    
+    for entry in fs::read_dir(&roms_dir).map_err(|e| format!("Failed to read roms directory: {}", e))? {
+        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+        let metadata = entry.metadata().map_err(|e| format!("Failed to read metadata: {}", e))?;
+        
+        if metadata.is_file() {
+            roms.push(RomMetadata {
+                name: entry.file_name().to_string_lossy().into_owned(),
+                size: metadata.len(),
+                last_modified: metadata.modified()
+                    .map_err(|e| format!("Failed to get modification time: {}", e))?
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_err(|e| format!("Failed to calculate timestamp: {}", e))?
+                    .as_secs(),
+                path: entry.path().to_string_lossy().into_owned(),
+            });
+        }
+    }
+    
+    Ok(roms)
+}
+
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
@@ -584,6 +706,11 @@ async fn main() {
             delete_rom,
             open_rom_folder,
             run_emulator_with_rom,
+            import_rom,
+            list_roms,
+            create_temp_file,
+            write_temp_file,
+            delete_temp_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

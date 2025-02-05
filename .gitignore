@@ -37,6 +37,8 @@ pnpm-debug.log*
 lerna-debug.log*
 package-lock.json
 
+
+emulators.json
 # Environment variables
 .env
 .env.*
